@@ -45,7 +45,7 @@ Student
 ## Installation
 
 ```bash
-git clone https://github.com/yourusername/smart-attendance-system
+git clone https://github.com/arfaheemshahnawaz-web/smart-attendance-system
 cd smart-attendance-system
 npm install
 npm run dev
