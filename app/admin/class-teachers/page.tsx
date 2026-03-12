@@ -5,11 +5,6 @@ import { motion } from "framer-motion";
 
 export default function AssignClassTeacherPage() {
 
-const token =
-typeof window !== "undefined"
-? localStorage.getItem("token")
-: null;
-
 const [batches,setBatches] = useState<any[]>([]);
 const [divisions,setDivisions] = useState<any[]>([]);
 const [teachers,setTeachers] = useState<any[]>([]);
@@ -26,41 +21,101 @@ const [loading,setLoading] = useState(false);
 
 useEffect(()=>{
 
-fetch("/api/admin/batches",{
+const token = localStorage.getItem("token");
+if(!token) return;
+
+const loadBatches = async ()=>{
+
+try{
+
+const res = await fetch("/api/admin/batches",{
 headers:{ Authorization:`Bearer ${token}` }
-})
-.then(res=>res.json())
-.then(setBatches);
+});
+
+const data = await res.json();
+
+setBatches(Array.isArray(data) ? data : []);
+
+}catch(err){
+console.error(err);
+setBatches([]);
+}
+
+};
+
+loadBatches();
 
 },[]);
+
 
 
 /* LOAD DIVISIONS */
 
 useEffect(()=>{
 
-if(!batchId) return;
+const token = localStorage.getItem("token");
 
-fetch(`/api/admin/divisions?batchId=${batchId}`,{
+if(!batchId || !token){
+setDivisions([]);
+setDivisionId("");
+return;
+}
+
+const loadDivisions = async ()=>{
+
+try{
+
+const res = await fetch(`/api/admin/divisions?batchId=${batchId}`,{
 headers:{ Authorization:`Bearer ${token}` }
-})
-.then(res=>res.json())
-.then(setDivisions);
+});
+
+const data = await res.json();
+
+setDivisions(Array.isArray(data) ? data : []);
+
+}catch(err){
+console.error(err);
+setDivisions([]);
+}
+
+};
+
+loadDivisions();
 
 },[batchId]);
+
 
 
 /* LOAD TEACHERS */
 
 useEffect(()=>{
 
-fetch("/api/admin/users?role=teacher",{
+const token = localStorage.getItem("token");
+if(!token) return;
+
+const loadTeachers = async ()=>{
+
+try{
+
+const res = await fetch("/api/admin/users?role=teacher",{
 headers:{ Authorization:`Bearer ${token}` }
-})
-.then(res=>res.json())
-.then(setTeachers);
+});
+
+const data = await res.json();
+
+setTeachers(Array.isArray(data) ? data : []);
+
+}catch(err){
+console.error(err);
+setTeachers([]);
+}
+
+};
+
+loadTeachers();
 
 },[]);
+
 
 
 /* ASSIGN TEACHER */
@@ -69,12 +124,16 @@ const assignTeacher = async()=>{
 
 setMessage("");
 
+const token = localStorage.getItem("token");
+
 if(!divisionId || !teacherId){
 setMessage("Please select division and teacher");
 return;
 }
 
 setLoading(true);
+
+try{
 
 const res = await fetch("/api/admin/class-teacher",{
 method:"POST",
@@ -94,6 +153,10 @@ setMessage("✅ Class teacher assigned successfully");
 setTeacherId("");
 }
 
+}catch(err){
+setMessage("Server error");
+}
+
 setLoading(false);
 
 };
@@ -103,7 +166,6 @@ setLoading(false);
 return(
 
 <div className="min-h-screen bg-[#0f172a] text-white p-10 space-y-10">
-
 
 {/* HEADER */}
 
@@ -133,11 +195,15 @@ whileHover={{scale:1.01}}
 className="max-w-xl bg-[#1e293b] border border-white/10 rounded-xl p-6 shadow-lg space-y-4"
 >
 
+
 {/* Batch */}
 
 <select
 value={batchId}
-onChange={(e)=>setBatchId(e.target.value)}
+onChange={(e)=>{
+setBatchId(e.target.value);
+setDivisionId("");
+}}
 className="w-full bg-[#0f172a] border border-white/10 rounded-lg p-3 outline-none focus:border-cyan-400"
 >
 

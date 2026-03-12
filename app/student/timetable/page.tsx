@@ -65,7 +65,7 @@ export default function StudentTimetablePage() {
 
   const now = new Date();
 
-  const currentDay = DAYS[now.getDay() - 1];
+  const currentDay = DAYS[now.getDay() === 0 ? 6 : now.getDay() - 1];
 
   const currentHourSlot =
     `${now.getHours().toString().padStart(2,"0")}:00-${

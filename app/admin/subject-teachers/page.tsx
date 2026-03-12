@@ -5,11 +5,6 @@ import { motion } from "framer-motion";
 
 export default function SubjectTeacherPage() {
 
-const token =
-typeof window !== "undefined"
-? localStorage.getItem("token")
-: null;
-
 const [batches,setBatches] = useState<any[]>([]);
 const [subjects,setSubjects] = useState<any[]>([]);
 const [teachers,setTeachers] = useState<any[]>([]);
@@ -22,22 +17,40 @@ const [error,setError] = useState("");
 const [success,setSuccess] = useState("");
 
 
-
 /* ================= LOAD BATCHES + TEACHERS ================= */
 
 useEffect(()=>{
 
-fetch("/api/admin/batches",{
-headers:{ Authorization:`Bearer ${token}` }
-})
-.then(res=>res.json())
-.then(setBatches);
+const token = localStorage.getItem("token");
+if(!token) return;
 
-fetch("/api/admin/teachers",{
+const loadData = async () => {
+
+try{
+
+const batchRes = await fetch("/api/admin/batches",{
 headers:{ Authorization:`Bearer ${token}` }
-})
-.then(res=>res.json())
-.then(setTeachers);
+});
+
+const teacherRes = await fetch("/api/admin/teachers",{
+headers:{ Authorization:`Bearer ${token}` }
+});
+
+const batchData = await batchRes.json();
+const teacherData = await teacherRes.json();
+
+setBatches(Array.isArray(batchData) ? batchData : []);
+setTeachers(Array.isArray(teacherData) ? teacherData : []);
+
+}catch(err){
+console.error(err);
+setBatches([]);
+setTeachers([]);
+}
+
+};
+
+loadData();
 
 },[]);
 
@@ -47,13 +60,34 @@ headers:{ Authorization:`Bearer ${token}` }
 
 useEffect(()=>{
 
-if(!batchId) return;
+const token = localStorage.getItem("token");
 
-fetch(`/api/admin/subjects?batchId=${batchId}`,{
+if(!batchId || !token) {
+setSubjects([]);
+setSubjectId("");
+return;
+}
+
+const loadSubjects = async () => {
+
+try{
+
+const res = await fetch(`/api/admin/subjects?batchId=${batchId}`,{
 headers:{ Authorization:`Bearer ${token}` }
-})
-.then(res=>res.json())
-.then(setSubjects);
+});
+
+const data = await res.json();
+
+setSubjects(Array.isArray(data) ? data : []);
+
+}catch(err){
+console.error(err);
+setSubjects([]);
+}
+
+};
+
+loadSubjects();
 
 },[batchId]);
 
@@ -66,10 +100,14 @@ const assignSubject = async()=>{
 setError("");
 setSuccess("");
 
+const token = localStorage.getItem("token");
+
 if(!batchId || !subjectId || !teacherId){
 setError("All fields are required");
 return;
 }
+
+try{
 
 const res = await fetch("/api/admin/subject-teacher",{
 method:"POST",
@@ -90,6 +128,10 @@ if(!res.ok){
 setError(data.error || "Assignment failed");
 }else{
 setSuccess("Subject assigned successfully");
+}
+
+}catch(err){
+setError("Server error");
 }
 
 };
@@ -134,7 +176,10 @@ className="max-w-lg bg-[#1e293b] border border-white/10 rounded-xl p-6 shadow-lg
 
 <select
 value={batchId}
-onChange={(e)=>setBatchId(e.target.value)}
+onChange={(e)=>{
+setBatchId(e.target.value);
+setSubjectId("");
+}}
 className="w-full bg-[#0f172a] border border-white/10 rounded-lg p-3 mb-4 outline-none focus:border-cyan-400"
 >
 

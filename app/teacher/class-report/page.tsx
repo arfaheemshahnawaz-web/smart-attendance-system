@@ -24,6 +24,7 @@ totalAttendanceRecords:0
 
 const [presentCount,setPresentCount] = useState(0);
 const [absentCount,setAbsentCount] = useState(0);
+const [message,setMessage] = useState("");
 
 const [loading,setLoading] = useState(true);
 
@@ -44,7 +45,16 @@ Authorization:`Bearer ${token}`
 .then(async(res)=>{
 
 if(!res.ok){
-throw new Error("Failed to load class report");
+
+  const err = await res.json();
+
+  if(res.status === 403){
+    setMessage("No assigned class");
+    setLoading(false);
+    return;
+  }
+
+  throw new Error(err.error || "Failed to load class report");
 }
 
 const text = await res.text();
@@ -101,7 +111,11 @@ All subjects attendance for your division
 
 </div>
 
-
+{message && (
+<div className="bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 p-4 rounded-lg">
+  {message}
+</div>
+)}
 
 {/* STATS */}
 
