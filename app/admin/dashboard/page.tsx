@@ -18,6 +18,7 @@ LineChart,
 Line,
 XAxis,
 YAxis,
+Label,
 Tooltip
 } from "recharts";
 
@@ -145,9 +146,12 @@ System Activity
 
 <LineChart data={activityData}>
 
-<XAxis dataKey="day"/>
-<YAxis/>
-<Tooltip/>
+<XAxis dataKey="day">
+  <Label value="Day of Month" position="insideBottom" offset={-5} />
+</XAxis>
+<YAxis>
+  <Label value="Activity Count" angle={-90} position="insideLeft" />
+</YAxis><Tooltip/>
 
 <Line
 type="monotone"

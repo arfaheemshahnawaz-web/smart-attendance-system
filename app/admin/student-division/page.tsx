@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { s } from "framer-motion/client";
 
 export default function StudentDivisionPage() {
 
@@ -146,7 +147,9 @@ className="w-full bg-[#0f172a] border border-white/10 rounded-lg p-3 mb-4 outlin
 Select Batch
 </option>
 
-{batches.map(b=>(
+
+{Array.isArray(batches) &&
+batches.map((b)=>(
 <option key={b._id} value={b._id}>
 {b.name} ({b.academicYear})
 </option>
@@ -190,7 +193,9 @@ className="w-full bg-[#0f172a] border border-white/10 rounded-lg p-3 mb-4 outlin
 Select Student
 </option>
 
-{students.map(s=>(
+
+{Array.isArray(students) &&
+students.map((s)=>(
 <option key={s._id} value={s._id}>
 {s.name} ({s.collegeId})
 </option>

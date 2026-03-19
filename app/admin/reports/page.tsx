@@ -2,6 +2,8 @@
 
 import { useEffect,useState } from "react";
 import jsPDF from "jspdf";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 import autoTable from "jspdf-autotable";
 
 export default function AdminReportsPage(){
@@ -17,7 +19,9 @@ const [batchId,setBatchId] = useState("");
 const [divisionId,setDivisionId] = useState("");
 
 const [report,setReport] = useState<any>(null);
-
+const [subjectFilter,setSubjectFilter] = useState("");
+const [monthFilter,setMonthFilter] = useState("");
+const [subjects,setSubjects] = useState<any[]>([]);
 
 
 /* LOAD BATCHES */
@@ -47,13 +51,25 @@ headers:{ Authorization:`Bearer ${token}` }
 
 },[batchId]);
 
+useEffect(()=>{
 
+if(!batchId) return;
+
+fetch(`/api/admin/subjects?batchId=${batchId}`,{
+headers:{ Authorization:`Bearer ${token}` }
+})
+.then(res=>res.json())
+.then(data=>{
+setSubjects(data || []);
+});
+
+},[batchId]);
 /* LOAD REPORT */
 
 const loadReport = async()=>{
 
 const res = await fetch(
-`/api/admin/reports?divisionId=${divisionId}`,
+`/api/admin/reports?divisionId=${divisionId}&subject=${subjectFilter}&month=${monthFilter}`,
 {
 headers:{ Authorization:`Bearer ${token}` }
 }
@@ -65,7 +81,48 @@ setReport(data);
 
 };
 
+const downloadExcel = ()=>{
 
+if(!report) return;
+
+const excelData = report.report.map((s:any)=>{
+
+const row:any = {
+Student:s.studentName
+};
+
+report.subjects.forEach((sub:string)=>{
+row[sub] = s.subjects[sub] + "%";
+});
+
+row["Overall"] = s.overall + "%";
+
+return row;
+
+});
+
+const worksheet = XLSX.utils.json_to_sheet(excelData);
+const workbook = XLSX.utils.book_new();
+
+XLSX.utils.book_append_sheet(
+workbook,
+worksheet,
+"Attendance Report"
+);
+
+const excelBuffer = XLSX.write(
+workbook,
+{bookType:"xlsx",type:"array"}
+);
+
+const blob = new Blob(
+[excelBuffer],
+{type:"application/octet-stream"}
+);
+
+saveAs(blob,"attendance_report.xlsx");
+
+};
 
 /* PDF DOWNLOAD */
 
@@ -117,12 +174,12 @@ onChange={(e)=>setBatchId(e.target.value)}
 
 <option value="">Select Batch</option>
 
-{batches.map(b=>(
+{Array.isArray(batches) &&
+batches.map((b)=>(
 <option key={b._id} value={b._id}>
 {b.name} ({b.academicYear})
 </option>
 ))}
-
 </select>
 
 
@@ -141,7 +198,43 @@ onChange={(e)=>setDivisionId(e.target.value)}
 
 </select>
 
+<select
+className="w-full p-3 rounded bg-[#0f172a]"
+onChange={(e)=>setSubjectFilter(e.target.value)}
+>
 
+<option value="">All Subjects</option>
+
+{subjects.map((s:any)=>(
+<option key={s._id} value={s.name}>
+{s.name}
+</option>
+))}
+
+</select>
+
+
+<select
+className="w-full p-3 rounded bg-[#0f172a]"
+onChange={(e)=>setMonthFilter(e.target.value)}
+>
+
+<option value="">All Months</option>
+
+<option value="1">Jan</option>
+<option value="2">Feb</option>
+<option value="3">Mar</option>
+<option value="4">Apr</option>
+<option value="5">May</option>
+<option value="6">Jun</option>
+<option value="7">Jul</option>
+<option value="8">Aug</option>
+<option value="9">Sep</option>
+<option value="10">Oct</option>
+<option value="11">Nov</option>
+<option value="12">Dec</option>
+
+</select>
 <button
 onClick={loadReport}
 className="w-full bg-cyan-500 p-3 rounded font-semibold"
@@ -215,12 +308,23 @@ ${val<75?"text-red-400":"text-green-400"}
 </table>
 
 
+<div className="flex gap-4 mt-6">
+
 <button
 onClick={downloadPDF}
-className="mt-6 bg-green-500 px-6 py-2 rounded"
+className="bg-green-500 px-6 py-2 rounded"
 >
 Download PDF
 </button>
+
+<button
+onClick={downloadExcel}
+className="bg-emerald-500 px-6 py-2 rounded"
+>
+Download Excel
+</button>
+
+</div>
 
 </div>
 

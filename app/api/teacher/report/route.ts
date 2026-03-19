@@ -6,141 +6,217 @@ import { connectDB } from "@/lib/db";
 import { Attendance } from "@/models/Attendance";
 import { AttendanceSession } from "@/models/AttendanceSession";
 import { User } from "@/models/User";
-import { Division } from "@/models/Division";
 import { Subject } from "@/models/Subject";
+import { SubjectTeacher } from "@/models/SubjectTeacher"; // ✅ YOUR MODEL
 
 export async function GET(req: Request) {
 
-  try {
+try {
 
-    const token = req.headers.get("authorization")?.split(" ")[1];
+const token = req.headers.get("authorization")?.split(" ")[1];
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+if (!token) {
+return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+}
 
-    const decoded: any = jwt.verify(
-      token,
-      process.env.JWT_SECRET as string
-    );
+const decoded:any = jwt.verify(
+token,
+process.env.JWT_SECRET as string
+);
 
-    await connectDB();
+await connectDB();
 
-    /* GET SESSIONS */
+const { searchParams } = new URL(req.url);
 
-    const sessions = await AttendanceSession.find({
-      teacherId: decoded.userId
-    });
+const subjectFilter = searchParams.get("subject");
+const monthFilter = searchParams.get("month");
+const batchId = searchParams.get("batchId");
+const divisionId = searchParams.get("divisionId");
 
-    if(!sessions.length){
-      return NextResponse.json({
-        role:"subject-teacher",
-        reports:[],
-        totalSessions:0,
-        totalAttendanceRecords:0,
-        latestPresent:0,
-        latestAbsent:0
-      });
-    }
 
-    const divisionIds = sessions.map((s:any)=>s.divisionId);
+/* 🚨 REQUIRE BATCH + DIVISION */
 
-    /* GET DIVISIONS */
+if(!batchId){
+return NextResponse.json({
+role:"subject-teacher",
+reports:[],
+subjects:[],
+totalSessions:0,
+totalAttendanceRecords:0
+});
+}
 
-    const divisions = await Division.find({
-      _id: { $in: divisionIds }
-    });
 
-    const semesterMap:any = {};
+/* ✅ GET SUBJECTS FROM MAPPING (NOT SESSIONS) */
 
-    divisions.forEach((d:any)=>{
-      semesterMap[d._id] = d.semester;
-    });
+const subjectTeacher = await SubjectTeacher.find({
+teacherId: decoded.userId,
+batchId: batchId
+});
 
-    /* FILTER SESSIONS BY SEMESTER */
+const subjectIds = subjectTeacher.map((s:any)=>s.subjectId.toString());
 
-    const validSessions:any[] = [];
+const allSubjects = await Subject.find({
+_id:{ $in:subjectIds },
+isActive:true
+});
 
-    for(const s of sessions){
 
-      const subject = await Subject.findById(s.subjectId);
 
-      if(subject && subject.semester === semesterMap[s.divisionId]){
-        validSessions.push(s);
-      }
 
-    }
+/* 🎯 SUBJECT FILTER */
 
-    const sessionIds = validSessions.map((s:any)=>s._id);
+let filteredSubjectIds = subjectIds;
 
-    /* STUDENTS */
+if(subjectFilter){
 
-    const students = await User.find({
-      divisionId: { $in: divisionIds },
-      role: "student",
-      status: "approved"
-    });
+const subjectDoc = allSubjects.find(
+(s:any)=>s.name === subjectFilter
+);
 
-    /* ATTENDANCE */
+if(subjectDoc){
+filteredSubjectIds = [subjectDoc._id.toString()];
+}
 
-    const attendance = await Attendance.find({
-      sessionId: { $in: sessionIds }
-    });
+}
 
-    /* STUDENT MAP */
 
-    const studentMap:any = {};
+/* 📚 GET SESSIONS */
 
-    students.forEach((s:any)=>{
-      studentMap[s._id] = {
-        studentName:s.name,
-        studentEmail:s.email,
-        present:0
-      };
-    });
+const sessionQuery:any = {
+  teacherId: decoded.userId,
+  batchId: batchId,
+  subjectId: { $in: filteredSubjectIds }
+};
 
-    attendance.forEach((a:any)=>{
-      const id = a.studentId.toString();
-      if(studentMap[id] && a.status==="present"){
-        studentMap[id].present++;
-      }
-    });
+if(divisionId){
+  sessionQuery.divisionId = divisionId;
+}
 
-    const reports = Object.values(studentMap).map((s:any)=>({
+let sessions = await AttendanceSession.find(sessionQuery);
 
-      studentName:s.studentName,
-      studentEmail:s.studentEmail,
 
-      status:`${Math.round(
-        (s.present / (validSessions.length || 1)) * 100
-      )}%`
 
-    }));
+/* 📅 MONTH FILTER */
 
-    return NextResponse.json({
+if(monthFilter){
 
-      role:"subject-teacher",
+sessions = sessions.filter((s:any)=>{
 
-      reports,
+if(!s.date) return false;
 
-      totalSessions:validSessions.length,
+const month = new Date(s.date).getMonth()+1;
 
-      totalAttendanceRecords:attendance.length,
+return month === Number(monthFilter);
 
-      latestPresent:0,
-      latestAbsent:0
+});
 
-    });
+}
 
-  } catch(error){
 
-    console.error("REPORT ERROR:",error);
+/* 👨‍🎓 STUDENTS */
 
-    return NextResponse.json(
-      { error:"Failed to fetch reports" },
-      { status:500 }
-    );
+/* 👨‍🎓 STUDENTS (UPDATED — division optional) */
 
-  }
+const studentQuery:any = {
+role:"student",
+status:"approved"
+};
+
+if(divisionId){
+studentQuery.divisionId = divisionId;
+}else{
+const divisionIds = [...new Set(
+sessions.map((s:any)=>s.divisionId.toString())
+)];
+
+studentQuery.divisionId = { $in: divisionIds };
+}
+const students = await User.find(studentQuery);
+
+
+/* 📊 ATTENDANCE */
+
+const sessionIds = sessions.map((s:any)=>s._id);
+
+const attendance = await Attendance.find({
+sessionId:{ $in:sessionIds }
+});
+
+
+/* 🧠 BUILD REPORT */
+
+const reportMap:any = {};
+
+students.forEach((student:any)=>{
+
+reportMap[student._id] = {
+studentName:student.name,
+studentEmail:student.email,
+subjects:{}
+};
+
+});
+
+
+/* SUBJECT WISE CALCULATION */
+
+for(const subject of allSubjects){
+
+if(!filteredSubjectIds.includes(subject._id.toString())) continue;
+
+const subjectSessions = sessions.filter(
+(s:any)=>s.subjectId.toString() === subject._id.toString()
+);
+
+const subjectSessionIds = subjectSessions.map((s:any)=>s._id);
+
+
+students.forEach((student:any)=>{
+
+const present = attendance.filter((a:any)=>
+
+a.studentId.toString() === student._id.toString() &&
+a.status === "present" &&
+subjectSessionIds.some(id=>id.toString()===a.sessionId.toString())
+
+).length;
+
+
+const percent = Math.round(
+(present / (subjectSessions.length || 1)) * 100
+);
+
+reportMap[student._id].subjects[subject.name] = percent;
+
+});
+
+}
+
+
+/* FINAL */
+
+const reports = Object.values(reportMap);
+
+return NextResponse.json({
+
+role:"subject-teacher",
+reports,
+subjects: allSubjects.map((s:any)=>s.name),
+totalSessions: sessions.length,
+totalAttendanceRecords: attendance.length,
+
+});
+
+}catch(error){
+
+console.error("REPORT ERROR:",error);
+
+return NextResponse.json(
+{error:"Failed to fetch reports"},
+{status:500}
+);
+
+}
 
 }

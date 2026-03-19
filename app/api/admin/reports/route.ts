@@ -29,7 +29,10 @@ return NextResponse.json({error:"Access denied"}, {status:403});
 await connectDB();
 
 const { searchParams } = new URL(req.url);
+
 const divisionId = searchParams.get("divisionId");
+const subjectFilter = searchParams.get("subject");
+const monthFilter = searchParams.get("month");
 
 if(!divisionId){
 return NextResponse.json({error:"divisionId required"}, {status:400});
@@ -50,14 +53,18 @@ const semester = division.semester;
 
 
 /* ===============================
-   GET SUBJECTS OF CURRENT SEM
+   GET SUBJECTS
 ================================ */
 
-const subjects:any = await Subject.find({
+let subjects:any = await Subject.find({
 batchId: division.batchId,
 semester,
 isActive:true
 });
+
+if(subjectFilter){
+subjects = subjects.filter((s:any)=>s.name === subjectFilter);
+}
 
 
 /* ===============================
@@ -75,9 +82,41 @@ status:"approved"
    GET SESSIONS
 ================================ */
 
-const sessions:any = await AttendanceSession.find({
+let sessions:any = await AttendanceSession.find({
 divisionId
 });
+
+
+/* MONTH FILTER */
+
+if(monthFilter){
+
+sessions = sessions.filter((s:any)=>{
+
+if(!s.date) return false;
+
+const month = new Date(s.date).getMonth()+1;
+
+return month === Number(monthFilter);
+
+});
+
+}
+
+
+/* SUBJECT FILTER ON SESSIONS */
+
+if(subjectFilter){
+
+const subjectDoc = subjects[0];
+
+if(subjectDoc){
+sessions = sessions.filter(
+(s:any)=>s.subjectId?.toString() === subjectDoc._id.toString()
+);
+}
+
+}
 
 
 const sessionIds = sessions.map((s:any)=>s._id);
@@ -118,9 +157,10 @@ const subjectSessions = sessions.filter(
 const subjectSessionIds = subjectSessions.map((s:any)=>s._id);
 
 const subjectAttendance = attendance.filter(
-(a:any)=>a.studentId.toString() === student._id.toString()
-&& subjectSessionIds.includes(a.sessionId)
-&& a.status==="present"
+(a:any)=>
+a.studentId.toString() === student._id.toString() &&
+subjectSessionIds.some((id: any) => id.toString() === a.sessionId.toString())&&
+a.status==="present"
 );
 
 const present = subjectAttendance.length;
@@ -152,7 +192,6 @@ semester,
 subjects:subjects.map((s:any)=>s.name),
 report
 });
-
 
 }catch(error){
 

@@ -1,95 +1,83 @@
 "use client";
 
-import { useEffect,useState } from "react";
-import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-
-import {
-PieChart,
-Pie,
-Cell,
-Tooltip,
-ResponsiveContainer
-} from "recharts";
+import { useEffect, useState } from "react";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 export default function ClassReportPage(){
 
-const router = useRouter();
-
 const [reports,setReports] = useState<any[]>([]);
-const [stats,setStats] = useState<any>({
-totalSessions:0,
-totalAttendanceRecords:0
+const [subjects,setSubjects] = useState<string[]>([]);
+const [lowStudents,setLowStudents] = useState<any[]>([]);
+
+const [subjectFilter,setSubjectFilter] = useState("");
+const [monthFilter,setMonthFilter] = useState("");
+
+const [stats,setStats] = useState({
+sessions:0,
+records:0,
+students:0
 });
-
-const [presentCount,setPresentCount] = useState(0);
-const [absentCount,setAbsentCount] = useState(0);
-const [message,setMessage] = useState("");
-
-const [loading,setLoading] = useState(true);
-
-const token =
-typeof window !== "undefined"
-? localStorage.getItem("token")
-: null;
-
 
 
 useEffect(()=>{
 
-fetch("/api/teacher/class-report",{
-headers:{
-Authorization:`Bearer ${token}`
-}
+const token = localStorage.getItem("token");
+
+fetch(`/api/teacher/class-report?subject=${subjectFilter}&month=${monthFilter}`,{
+headers:{Authorization:`Bearer ${token}`}
 })
-.then(async(res)=>{
+.then(res=>res.json())
+.then(data=>{
 
-if(!res.ok){
-
-  const err = await res.json();
-
-  if(res.status === 403){
-    setMessage("No assigned class");
-    setLoading(false);
-    return;
-  }
-
-  throw new Error(err.error || "Failed to load class report");
-}
-
-const text = await res.text();
-return text ? JSON.parse(text) : {};
-
-})
-.then((data)=>{
-
-setReports(data?.reports || []);
+setReports(data.reports || []);
+setSubjects(data.subjects || []);
+setLowStudents(data.lowAttendanceStudents || []);
 
 setStats({
-totalSessions:data?.totalSessions || 0,
-totalAttendanceRecords:data?.totalAttendanceRecords || 0
+sessions:data.totalSessions || 0,
+records:data.totalAttendanceRecords || 0,
+students:data.students || 0
 });
 
-setPresentCount(data?.presentCount || 0);
-setAbsentCount(data?.absentCount || 0);
 
-setLoading(false);
-
-})
-.catch((err)=>{
-console.error("CLASS REPORT ERROR",err);
-setLoading(false);
 });
 
-},[]);
+},[subjectFilter,monthFilter]);
 
 
 
-const pieData = [
-{ name:"Present",value:presentCount },
-{ name:"Absent",value:absentCount }
-];
+/* EXCEL DOWNLOAD */
 
+const downloadExcel = ()=>{
+
+const excelData = reports.map((r)=>{
+
+const row:any = {
+Student:r.studentName,
+Email:r.studentEmail
+};
+
+subjects.forEach((s)=>{
+row[s] = r.subjects?.[s] ?? 0;
+});
+
+return row;
+
+});
+
+const ws = XLSX.utils.json_to_sheet(excelData);
+const wb = XLSX.utils.book_new();
+
+XLSX.utils.book_append_sheet(wb,ws,"Attendance");
+
+const buffer = XLSX.write(wb,{bookType:"xlsx",type:"array"});
+
+const blob = new Blob([buffer],{type:"application/octet-stream"});
+
+saveAs(blob,"class_attendance_report.xlsx");
+
+};
 
 
 return(
@@ -99,162 +87,121 @@ return(
 
 {/* HEADER */}
 
-<div>
+<div className="flex justify-between items-center">
 
 <h1 className="text-3xl font-bold">
 Class Attendance Report
 </h1>
 
-<p className="text-gray-400 mt-1">
-All subjects attendance for your division
-</p>
-
-</div>
-
-{message && (
-<div className="bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 p-4 rounded-lg">
-  {message}
-</div>
-)}
-
-{/* STATS */}
-
-<div className="grid md:grid-cols-3 gap-6">
-
-<StatCard
-label="Total Sessions"
-value={stats.totalSessions}
-/>
-
-<StatCard
-label="Attendance Records"
-value={stats.totalAttendanceRecords}
-/>
-
-<StatCard
-label="Students"
-value={reports.length}
-/>
+<button
+onClick={downloadExcel}
+className="bg-emerald-500 px-4 py-2 rounded-lg"
+>
+Download Excel
+</button>
 
 </div>
 
 
 
-{/* PIE CHART */}
+{/* FILTERS */}
 
-<div className="bg-white/5 border border-white/10 rounded-xl p-6">
+<div className="flex gap-4">
 
-<h2 className="text-lg font-semibold mb-6">
-Attendance Distribution
-</h2>
-
-<ResponsiveContainer width="100%" height={300}>
-
-<PieChart>
-
-<Pie
-data={pieData}
-dataKey="value"
-nameKey="name"
-outerRadius={110}
-label
+<select
+value={subjectFilter}
+onChange={(e)=>setSubjectFilter(e.target.value)}
+className="bg-white/10 border px-4 py-2 rounded"
 >
 
-<Cell fill="#10b981"/>
-<Cell fill="#ef4444"/>
+<option value="">All Subjects</option>
 
-</Pie>
+{subjects.map((s,i)=>(
+<option key={i} value={s}>{s}</option>
+))}
 
-<Tooltip/>
+</select>
 
-</PieChart>
 
-</ResponsiveContainer>
+<select
+value={monthFilter}
+onChange={(e)=>setMonthFilter(e.target.value)}
+className="bg-white/10 border px-4 py-2 rounded"
+>
+
+<option value="">All Months</option>
+
+<option value="1">Jan</option>
+<option value="2">Feb</option>
+<option value="3">Mar</option>
+<option value="4">Apr</option>
+<option value="5">May</option>
+<option value="6">Jun</option>
+<option value="7">Jul</option>
+<option value="8">Aug</option>
+<option value="9">Sep</option>
+<option value="10">Oct</option>
+<option value="11">Nov</option>
+<option value="12">Dec</option>
+
+</select>
 
 </div>
 
 
 
-{/* TABLE */}
+{/* LOW ATTENDANCE ALERT */}
 
-<motion.div
-initial={{opacity:0,y:20}}
-animate={{opacity:1,y:0}}
-className="bg-white/5 border border-white/10 rounded-xl p-6"
->
 
-<h2 className="text-lg font-semibold mb-6">
-Division Students
+
+{lowStudents.length>0 &&(
+<div className="bg-red-500/10 border border-red-500/30 p-6 rounded-xl">
+
+<h2 className="text-red-400 mb-4 font-semibold">
+Low Attendance Students
 </h2>
 
-
-{loading && (
-<p className="text-gray-400">
-Loading report...
-</p>
-)}
-
-
-
-{!loading && (
-
-<div className="overflow-x-auto">
-
-<table className="w-full">
+<table className="w-full table-fixed">
 
 <thead>
+<tr className="border-b border-white/10 text-left">
 
-<tr className="text-left text-gray-400 border-b border-white/10">
-
-<th className="py-3">Student</th>
-<th>Email</th>
-<th>Attendance %</th>
+<th className="py-2 w-1/4">Student</th>
+<th className="py-2">Subjects with Low Attendance</th>
 
 </tr>
-
 </thead>
-
 
 <tbody>
 
-{reports.map((r,i)=>{
+{lowStudents.map((s,i)=>(
 
-const low = r.attendancePercentage < 75;
-
-return(
-
-<tr
-key={i}
-className="border-b border-white/5 hover:bg-white/5"
->
+<tr key={i} className="border-b border-white/5">
 
 <td className="py-3 font-medium">
-{r.studentName}
-</td>
-
-<td className="text-gray-400">
-{r.studentEmail}
+{s.studentName}
 </td>
 
 <td>
 
-<span className={`px-3 py-1 rounded-full text-xs font-semibold
-${low
-? "bg-red-500/20 text-red-400"
-: "bg-emerald-500/20 text-emerald-400"
-}`}>
+<div className="flex flex-wrap gap-2">
 
-{r.attendancePercentage}%
-
+{s.subjects.map((sub:any,j:number)=>(
+<span
+key={j}
+className="bg-red-500/20 text-red-400 px-2 py-1 rounded text-xs"
+>
+{sub.subject} ({sub.percentage}%)
 </span>
+))}
+
+</div>
 
 </td>
 
 </tr>
 
-)
-
-})}
+))}
 
 </tbody>
 
@@ -264,11 +211,97 @@ ${low
 
 )}
 
-</motion.div>
+
+
+
+{/* STAT CARDS */}
+
+<div className="grid md:grid-cols-3 gap-6">
+
+<StatCard label="Sessions" value={stats.sessions}/>
+<StatCard label="Records" value={stats.records}/>
+<StatCard label="Students" value={stats.students}/>
 
 </div>
 
-)
+
+
+
+{/* TABLE */}
+
+<div className="bg-white/5 border border-white/10 rounded-xl p-6">
+
+<table className="w-full table-fixed text-center">
+
+<thead>
+
+<tr className="border-b border-white/10">
+
+<th className="py-3 text-left w-1/5">Student</th>
+<th className="text-left w-1/5">Email</th>
+
+{subjects.map((s,i)=>(
+<th key={i} className="w-[80px]">
+{s}
+</th>
+))}
+
+</tr>
+
+</thead>
+
+<tbody>
+
+{reports.map((r,i)=>(
+
+<tr key={i} className="border-b border-white/5">
+
+<td className="text-left py-3 font-medium">
+{r.studentName}
+</td>
+
+<td className="text-left text-gray-400">
+{r.studentEmail}
+</td>
+
+{subjects.map((s,j)=>{
+
+const p = r.subjects?.[s] ?? 0;
+
+return(
+
+<td key={j}>
+
+<span className={`px-2 py-1 rounded text-xs font-semibold
+${p < 75
+? "bg-red-500/20 text-red-400"
+: "bg-emerald-500/20 text-emerald-400"
+}`}>
+
+{p}%
+
+</span>
+
+</td>
+
+);
+
+})}
+
+</tr>
+
+))}
+
+</tbody>
+
+</table>
+
+</div>
+
+
+</div>
+
+);
 
 }
 
@@ -280,16 +313,12 @@ return(
 
 <div className="bg-white/5 border border-white/10 p-6 rounded-xl">
 
-<p className="text-gray-400 text-sm">
-{label}
-</p>
+<p className="text-gray-400 text-sm">{label}</p>
 
-<h2 className="text-2xl font-bold mt-2">
-{value}
-</h2>
+<h2 className="text-2xl font-bold mt-2">{value}</h2>
 
 </div>
 
-)
+);
 
 }

@@ -115,7 +115,7 @@ export default function LoginPage() {
       <div className="w-[380px] bg-white/5 border border-white/10 backdrop-blur-xl p-8 rounded-2xl shadow-2xl relative z-10">
 
         <h2 className="text-3xl font-bold text-center mb-6">
-          Student Portal
+          Login Portal
         </h2>
 
         <input
