@@ -72,6 +72,7 @@ Admin
 
 <SidebarItem label="Dashboard" onClick={()=>router.push("/admin/dashboard")} />
 <SidebarItem label="User Approvals" onClick={()=>router.push("/admin/users")} />
+<SidebarItem label="System Overview" onClick={()=>router.push("/admin/overview")} />
 <SidebarItem label="Manage Batches" onClick={()=>router.push("/admin/batches")} />
 <SidebarItem label="Manage Divisions" onClick={()=>router.push("/admin/divisions")} />
 <SidebarItem label="Class Teachers" onClick={()=>router.push("/admin/class-teachers")} />
@@ -201,6 +202,8 @@ Review Users
 <div className="grid md:grid-cols-3 gap-6">
 
 <ActionCard title="User Approvals" icon={<Users size={24}/>} onClick={()=>router.push("/admin/users")} />
+
+<ActionCard title="System Overview" icon={<Users size={24}/>}onClick={()=>router.push("/admin/overview")}/>
 
 <ActionCard title="Manage Batches" icon={<GraduationCap size={24}/>} onClick={()=>router.push("/admin/batches")} />
 

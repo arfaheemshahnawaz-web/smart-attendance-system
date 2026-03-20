@@ -52,11 +52,12 @@ export async function GET(req: Request) {
 
     /* ---------------- GET SESSIONS ---------------- */
 
-    const sessions = await AttendanceSession.find({
-      divisionId: student.divisionId,
-      subjectId: { $in: subjectIds },
-      date: { $lte: today },
-    });
+   const sessions = await AttendanceSession.find({
+  divisionId: student.divisionId,
+  subjectId: { $in: subjectIds },
+  date: { $lte: today },
+  endedAt: { $exists: false }, // ← add this
+});
 
     const sessionIds = sessions.map((s) => s._id);
 

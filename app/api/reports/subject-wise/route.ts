@@ -11,7 +11,6 @@ import { Subject } from "@/models/Subject";
 
 export async function GET(req: Request) {
   try {
-
     const token = req.headers.get("authorization")?.split(" ")[1];
     if (!token) return NextResponse.json([]);
 
@@ -23,32 +22,43 @@ export async function GET(req: Request) {
     if (!student) return NextResponse.json([]);
 
     /* ---------- GET DIVISION ---------- */
-
     const division = await Division.findById(student.divisionId);
     if (!division) return NextResponse.json([]);
 
     /* ---------- GET CURRENT SEM SUBJECTS ---------- */
-
     const subjects = await Subject.find({
       batchId: division.batchId,
       semester: division.semester,
-      isActive: true
+      isActive: true,
     });
 
-    const subjectIds = subjects.map(s => s._id);
+    const subjectIds = subjects.map((s) => s._id);
 
     /* ---------- GET SESSIONS ---------- */
-
     const sessions = await AttendanceSession.find({
-      divisionId: student.divisionId,
-      subjectId: { $in: subjectIds }
-    }).populate("subjectId");
+  divisionId: student.divisionId,
+  subjectId: { $in: subjectIds },
+  endedAt: { $exists: false }, // ← add this
+}).populate("subjectId");
 
-    const report: any = {};
+    const sessionIds = sessions.map((s) => s._id);
+
+    /* ---------- FETCH ALL ATTENDANCE IN ONE QUERY ---------- */
+    const attendanceRecords = await Attendance.find({
+      studentId: student._id,
+      sessionId: { $in: sessionIds },
+      status: "present",
+    });
+
+    const attendedSessionIds = new Set(
+      attendanceRecords.map((a) => a.sessionId.toString())
+    );
+
+    /* ---------- BUILD REPORT ---------- */
+    const report: Record<string, { total: number; attended: number }> = {};
 
     for (const session of sessions) {
-
-      const subject = session.subjectId?.name || "Unknown";
+      const subject = (session.subjectId as any)?.name || "Unknown";
 
       if (!report[subject]) {
         report[subject] = { total: 0, attended: 0 };
@@ -56,41 +66,25 @@ export async function GET(req: Request) {
 
       report[subject].total++;
 
-      const attended = await Attendance.findOne({
-        sessionId: session._id,
-        studentId: student._id,
-        status: "present",
-      });
-
-      if (attended) {
+      if (attendedSessionIds.has(session._id.toString())) {
         report[subject].attended++;
       }
-
     }
 
     const result = Object.keys(report).map((subject) => {
-
-      const total = report[subject].total;
-      const attended = report[subject].attended;
-
+      const { total, attended } = report[subject];
       return {
         subject,
         total,
         attended,
-        percentage:
-          total > 0
-            ? Number(((attended / total) * 100).toFixed(2))
-            : 0,
+        percentage: total > 0 ? Number(((attended / total) * 100).toFixed(2)) : 0,
       };
-
     });
 
     return NextResponse.json(result);
 
   } catch (error) {
-
     console.error(error);
     return NextResponse.json([]);
-
   }
 }

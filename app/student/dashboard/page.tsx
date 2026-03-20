@@ -257,7 +257,7 @@ export default function StudentDashboard() {
       </div>
 
       {/* ACTIONS */}
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-2 gap-6">
 
         <button
           onClick={() => router.push("/student/timetable")}
@@ -266,16 +266,10 @@ export default function StudentDashboard() {
           View Timetable
         </button>
 
-        <button
-          onClick={() => router.push("/student/history")}
-          className="bg-emerald-600 hover:bg-emerald-700 p-4 rounded-xl font-semibold transition hover:scale-105 shadow-lg"
-        >
-          Attendance History
-        </button>
 
         <button
           onClick={() => router.push("/student/reports")}
-          className="bg-emerald-600 hover:bg-emerald-700 p-4 rounded-xl font-semibold transition hover:scale-105 shadow-lg"
+          className="bg-emerald-600 hover:bg-emerald-700 p-4 rounded-xl font-semibold transition hover:scale- shadow-lg"
         >
           Reports
         </button>
