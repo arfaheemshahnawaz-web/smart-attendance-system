@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarDays, ArrowLeft } from "lucide-react";
 
-const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const days = ["Monday","Tuesday","Wednesday","Thursday","Friday"];
 
 export default function TeacherTimetablePage() {
 

@@ -9,8 +9,6 @@ const DAYS = [
 "Wednesday",
 "Thursday",
 "Friday",
-"Saturday",
-"Sunday",
 ];
 
 const SLOTS = [
@@ -21,13 +19,6 @@ const SLOTS = [
 "13:00-14:00",
 "14:00-15:00",
 "15:00-16:00",
-"16:00-17:00",
-"17:00-18:00",
-"18:00-19:00",
-"19:00-20:00",
-"20:00-21:00",
-"21:00-22:00",
-"22:00-23:00",
 ];
 
 export default function AdminTimetablePage() {
@@ -291,9 +282,10 @@ className="w-full bg-[#0f172a] border border-white/10 rounded-lg p-3 mb-4 outlin
 Select Subject
 </option>
 
-{subjects.map((s)=>(
+{Array.isArray(subjects) &&
+subjects.map((s)=>(
 <option key={s._id} value={s._id}>
-{s.name} (Sem {s.semester})
+{s.name} ({s.semester})
 </option>
 ))}
 

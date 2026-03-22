@@ -31,6 +31,7 @@ export async function GET(req: Request) {
       teacherId: decoded.userId,
       isActive: true,
     })
+    .sort({hourSlot: 1 })
       .populate({
         path: "divisionId",
         populate: {
