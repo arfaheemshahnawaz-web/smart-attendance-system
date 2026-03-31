@@ -10,7 +10,7 @@ AI-powered attendance management system using face recognition with Docker-based
 * Role based dashboards (Admin / Teacher / Student)
 * Semester promotion system
 * Attendance analytics
-* PDF attendance reports
+* Attendance reports
 * Smart attendance insights
 
 ---
