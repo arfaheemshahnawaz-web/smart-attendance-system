@@ -1,3 +1,4 @@
+"use client";
 import * as faceapi from "face-api.js";
 
 const MODEL_URL = "/models";
