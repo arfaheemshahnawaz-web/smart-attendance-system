@@ -17,11 +17,11 @@ AI-powered attendance management system using face recognition with Docker-based
 
 ## Tech Stack
 
-Frontend: Next.js, Tailwind CSS
-Backend: Node.js
-Database: MongoDB
-Authentication: JWT
-Deployment: Docker, Nginx (Reverse Proxy)
+- **Frontend:** Next.js, Tailwind CSS  
+- **Backend:** Node.js  
+- **Database:** MongoDB  
+- **Authentication:** JWT  
+- **Deployment:** Docker, Nginx (Reverse Proxy)
 
 ---
 
